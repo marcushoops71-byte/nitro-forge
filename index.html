@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Nitro Forge - Drag Racing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="game-container">
+
+  <!-- ─── FLOATING HUD ─── -->
+  <div id="top-hud">
+    <div class="hud-cell"><span class="hud-icon">💰</span><span id="hud-money">5,000</span></div>
+    <div class="hud-cell logo-small">NITRO<span>FORGE</span></div>
+    <div class="hud-cell"><span class="hud-icon">⚡</span>LV<span id="hud-level">1</span></div>
+  </div>
+
+  <!-- ─── TITLE SCREEN ─── -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg-grid"></div>
+    <div class="title-content">
+      <div class="title-logo-wrap">
+        <div class="title-logo">NITRO<span>FORGE</span></div>
+        <div class="title-sub">◈ PIXEL DRAG RACING ◈</div>
+      </div>
+      <canvas id="title-car-canvas" width="320" height="100"></canvas>
+      <div class="title-menu">
+        <button class="btn btn-primary" onclick="UI.show('garage')">🔧 GARAGE</button>
+        <button class="btn btn-green" onclick="UI.show('race-menu')">🏁 RACE NOW</button>
+        <button class="btn btn-secondary" onclick="UI.show('shop')">🏪 DEALERSHIP</button>
+        <button class="btn btn-dim" onclick="UI.show('records')">🏆 RECORDS</button>
+      </div>
+      <div class="title-bottom">
+        <span id="title-stat-races">0 RACES</span>
+        <span id="title-stat-wins">0 WINS</span>
+        <span id="title-best-et">BEST: --.--.--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── GARAGE SCREEN ─── -->
+  <div id="screen-garage" class="screen">
+    <div class="screen-header">
+      <button class="btn btn-back" onclick="UI.show('title')">← BACK</button>
+      <h2>GARAGE</h2>
+      <div class="car-nav">
+        <button class="btn btn-xs" id="prev-car-btn">◄</button>
+        <span id="garage-car-name">—</span>
+        <button class="btn btn-xs" id="next-car-btn">►</button>
+      </div>
+    </div>
+    <div class="garage-showcase">
+      <canvas id="garage-canvas" width="360" height="120"></canvas>
+      <div class="car-stat-bar">
+        <div class="stat-row"><span>HP</span><div class="stat-bar-wrap"><div id="stat-hp-bar" class="stat-fill hp"></div></div><span id="stat-hp-val">—</span></div>
+        <div class="stat-row"><span>WT</span><div class="stat-bar-wrap"><div id="stat-wt-bar" class="stat-fill wt"></div></div><span id="stat-wt-val">—</span></div>
+        <div class="stat-row"><span>GR</span><div class="stat-bar-wrap"><div id="stat-gr-bar" class="stat-fill gr"></div></div><span id="stat-gr-val">—</span></div>
+        <div class="stat-row"><span>PR</span><div class="stat-bar-wrap"><div id="stat-pr-bar" class="stat-fill pr"></div></div><span id="stat-pr-val">—</span></div>
+      </div>
+    </div>
+    <div class="garage-tabs">
+      <button class="tab-btn active" data-tab="mods">MODS</button>
+      <button class="tab-btn" data-tab="paint">PAINT</button>
+      <button class="tab-btn" data-tab="tune">TUNE</button>
+      <button class="tab-btn" data-tab="info">INFO</button>
+    </div>
+    <div id="garage-tab-content"></div>
+  </div>
+
+  <!-- ─── SHOP SCREEN ─── -->
+  <div id="screen-shop" class="screen">
+    <div class="screen-header">
+      <button class="btn btn-back" onclick="UI.show('title')">← BACK</button>
+      <h2>DEALERSHIP</h2>
+      <span id="shop-balance">$<span id="shop-money">0</span></span>
+    </div>
+    <div class="shop-filters">
+      <button class="filter-btn active" data-class="all">ALL</button>
+      <button class="filter-btn" data-class="D">D</button>
+      <button class="filter-btn" data-class="C">C</button>
+      <button class="filter-btn" data-class="B">B</button>
+      <button class="filter-btn" data-class="A">A</button>
+      <button class="filter-btn" data-class="S">S</button>
+    </div>
+    <div id="car-list"></div>
+  </div>
+
+  <!-- ─── RACE MENU SCREEN ─── -->
+  <div id="screen-race-menu" class="screen">
+    <div class="screen-header">
+      <button class="btn btn-back" onclick="UI.show('title')">← BACK</button>
+      <h2>RACE MENU</h2>
+    </div>
+    <div id="race-menu-car-preview"></div>
+    <div id="race-mode-list"></div>
+  </div>
+
+  <!-- ─── RACE SCREEN ─── -->
+  <div id="screen-race" class="screen">
+    <canvas id="race-canvas"></canvas>
+
+    <!-- Christmas Tree Lights -->
+    <div id="xmas-tree">
+      <div class="tree-col">
+        <div class="tree-light yellow" id="tl-s1"></div>
+        <div class="tree-light yellow" id="tl-a1"></div>
+        <div class="tree-light yellow" id="tl-a3"></div>
+        <div class="tree-light green"  id="tl-g1"></div>
+      </div>
+      <div class="tree-col">
+        <div class="tree-light yellow" id="tl-s2"></div>
+        <div class="tree-light yellow" id="tl-a2"></div>
+        <div class="tree-light yellow" id="tl-a4"></div>
+        <div class="tree-light green"  id="tl-g2"></div>
+      </div>
+    </div>
+
+    <!-- Race HUD Overlay -->
+    <div id="race-hud">
+      <div id="race-top-bar">
+        <div class="rinfo-block">
+          <div class="rinfo-label">TIME</div>
+          <div id="r-time" class="rinfo-val">0.000</div>
+        </div>
+        <div class="rinfo-block center-block" id="race-status-text">STAGE</div>
+        <div class="rinfo-block">
+          <div class="rinfo-label">DIST</div>
+          <div id="r-dist" class="rinfo-val">0 ft</div>
+        </div>
+      </div>
+
+      <div id="race-bottom-bar">
+        <div id="rpm-wrap">
+          <canvas id="rpm-gauge" width="220" height="54"></canvas>
+          <div id="shift-msg" class="shift-msg"></div>
+        </div>
+        <div id="race-center">
+          <div id="r-speed">0</div>
+          <div class="speed-unit">MPH</div>
+          <div id="r-gear">N</div>
+        </div>
+        <div id="nos-wrap">
+          <div class="nos-label">NOS</div>
+          <div id="nos-bar-bg"><div id="nos-bar-fill"></div></div>
+          <button id="btn-nos" class="btn btn-nos" onclick="Race.activateNos()">N</button>
+        </div>
+      </div>
+
+      <div id="race-action-row">
+        <button id="btn-race-main" class="btn btn-launch" onclick="Race.mainAction()">LAUNCH</button>
+      </div>
+
+      <div id="race-perfect-flash" class="perfect-flash hidden"></div>
+    </div>
+  </div>
+
+  <!-- ─── RESULTS SCREEN ─── -->
+  <div id="screen-results" class="screen">
+    <div id="results-inner">
+      <div id="results-banner">FINISH</div>
+      <div id="results-winner-text"></div>
+      <div id="results-stats-grid"></div>
+      <div id="results-rewards-box"></div>
+      <div class="results-btns">
+        <button class="btn btn-primary" onclick="Race.restart()">🔄 REMATCH</button>
+        <button class="btn btn-secondary" onclick="UI.show('race-menu')">🏁 RACE MENU</button>
+        <button class="btn btn-dim" onclick="UI.show('title')">🏠 HOME</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── RECORDS SCREEN ─── -->
+  <div id="screen-records" class="screen">
+    <div class="screen-header">
+      <button class="btn btn-back" onclick="UI.show('title')">← BACK</button>
+      <h2>RECORDS</h2>
+    </div>
+    <div id="records-content"></div>
+  </div>
+
+  <!-- ─── MODAL ─── -->
+  <div id="modal-overlay" class="hidden">
+    <div id="modal-box">
+      <div id="modal-body"></div>
+      <button class="btn btn-primary" id="modal-ok-btn">OK</button>
+    </div>
+  </div>
+
+  <!-- ─── TOAST ─── -->
+  <div id="toast-container"></div>
+
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/car.js"></script>
+<script src="js/race.js"></script>
+<script src="js/garage.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
