@@ -72,7 +72,7 @@ nitroforge/
 
 1. Push this repo to GitHub
 2. Settings → Pages → Source: `main` branch, `/ (root)`
-3. Done — playable at `https://marcushoops71-byte.github.io/nitroforge`
+3. Done — playable at `https://marcushoops71-byte.github.io/nitroforge/`
 
 ---
 
