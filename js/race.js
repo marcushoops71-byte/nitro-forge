@@ -24,6 +24,9 @@ const Race = (() => {
   let oLaunchDelay = 0, oShiftPoints = [];
   let oNosUsed = false, oNosTimer = 0;
 
+  // Pause
+  let paused = false;
+
   // Tree
   let treeStage = -1;
   let treeTimer = 0;
@@ -75,6 +78,13 @@ const Race = (() => {
     updateTreeLights(-1);
     document.getElementById('race-status-text').textContent = 'STAGE';
     document.getElementById('btn-nos').disabled = !playerCar.hasNos;
+
+    // Update top bar
+    const oppNameEl = document.getElementById('race-opp-name');
+    if (oppNameEl) oppNameEl.textContent = 'VS ' + opponentData.name.toUpperCase();
+    const pauseBtn = document.getElementById('btn-pause');
+    if (pauseBtn) { pauseBtn.textContent = '⏸'; pauseBtn.disabled = false; }
+    paused = false;
   }
 
   function mainAction() {
@@ -192,6 +202,76 @@ const Race = (() => {
     pNosActive = true;
     Audio.startNos();
     UI.toast('⚡ NOS ACTIVATED!', 'info');
+  }
+
+  // ── PAUSE / RESUME ──
+  function pause() {
+    if (paused || state === 'idle' || state === 'finished') return;
+    paused = true;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    Audio.idle();
+
+    // Draw pause overlay on top of current frame
+    const c = rCtx;
+    const W = raceCanvas.width, H = raceCanvas.height;
+    c.fillStyle = 'rgba(5,5,13,0.72)';
+    c.fillRect(0, 0, W, H);
+    c.textAlign = 'center';
+    c.font = 'bold 26px Orbitron, monospace';
+    c.fillStyle = '#ffcc00';
+    c.fillText('PAUSED', W / 2, H / 2 - 10);
+    c.font = '11px Share Tech Mono, monospace';
+    c.fillStyle = '#778899';
+    c.fillText('TAP RESUME OR PRESS P', W / 2, H / 2 + 18);
+    c.textAlign = 'left';
+
+    const btn = document.getElementById('btn-pause');
+    if (btn) btn.textContent = '▶';
+  }
+
+  function resume() {
+    if (!paused) return;
+    paused = false;
+    const btn = document.getElementById('btn-pause');
+    if (btn) btn.textContent = '⏸';
+    lastFrame = performance.now();
+    animId = requestAnimationFrame(loop);
+    if (state === 'racing') Audio.setRpm(pRpm);
+  }
+
+  function togglePause() {
+    if (state === 'finished' || state === 'idle') return;
+    if (paused) resume(); else pause();
+  }
+
+  function goBack() {
+    // If race is done or not started yet, just go back
+    if (raceFinished || state === 'idle' || state === 'staging' || state === 'staged') {
+      stop();
+      UI.show('race-menu');
+      return;
+    }
+    // Mid-race: pause then ask
+    const wasPaused = paused;
+    if (!paused) pause();
+
+    UI.confirm('Abandon this race?', () => {
+      paused = false;
+      stop();
+      UI.show('race-menu');
+    });
+
+    // If user dismisses modal without confirming, resume the race
+    if (!wasPaused) {
+      const modal = document.getElementById('modal-overlay');
+      const observer = new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) {
+          if (paused) resume();
+          observer.disconnect();
+        }
+      });
+      observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
   }
 
   // ── PHYSICS UPDATE ──
@@ -543,6 +623,7 @@ const Race = (() => {
 
   // ── MAIN LOOP ──
   function loop(ts) {
+    if (paused) return; // safety guard
     animId = requestAnimationFrame(loop);
     const dt = Math.min(0.05, (ts - lastFrame) / 1000);
     lastFrame = ts;
@@ -655,6 +736,7 @@ const Race = (() => {
   return {
     init, setup, start, stop,
     mainAction, activateNos, restart,
+    togglePause, goBack,
     getCurrentOpponent, getState,
   };
 })();
