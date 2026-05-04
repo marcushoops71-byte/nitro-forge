@@ -377,10 +377,40 @@ body {
 #screen-race { padding-top: 0; position: relative; }
 #race-canvas { display: block; width: 100%; flex: 1; }
 
+/* RACE CONTROL BAR */
+#race-ctrl-bar {
+  position: absolute;
+  top: 40px; left: 0; right: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  background: rgba(5,5,13,0.88);
+  border-bottom: 1px solid var(--border);
+  z-index: 60;
+  flex-shrink: 0;
+}
+#race-opp-name {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  flex: 1;
+  text-align: center;
+}
+#btn-pause {
+  padding: 4px 10px;
+  font-size: 14px;
+  border-color: var(--accent2);
+  color: var(--accent2);
+  min-width: 36px;
+}
+#btn-pause:hover { background: rgba(255,204,0,0.12); }
+
 /* CHRISTMAS TREE */
 #xmas-tree {
   position: absolute;
-  top: 44px;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -669,6 +699,12 @@ canvas { image-rendering: pixelated; }
 
   <!-- ─── RACE SCREEN ─── -->
   <div id="screen-race" class="screen">
+    <!-- Control bar: back + opponent label + pause -->
+    <div id="race-ctrl-bar">
+      <button class="btn btn-back" onclick="Race.goBack()">← BACK</button>
+      <div id="race-opp-name">VS OPPONENT</div>
+      <button class="btn" id="btn-pause" onclick="Race.togglePause()">⏸</button>
+    </div>
     <canvas id="race-canvas"></canvas>
     <div id="xmas-tree">
       <div class="tree-col">
@@ -1432,6 +1468,9 @@ const Race = (() => {
   let oLaunchDelay = 0, oShiftPoints = [];
   let oNosUsed = false, oNosTimer = 0;
 
+  // Pause
+  let paused = false;
+
   // Tree
   let treeStage = -1;
   let treeTimer = 0;
@@ -1483,6 +1522,13 @@ const Race = (() => {
     updateTreeLights(-1);
     document.getElementById('race-status-text').textContent = 'STAGE';
     document.getElementById('btn-nos').disabled = !playerCar.hasNos;
+
+    // Update top bar
+    const oppNameEl = document.getElementById('race-opp-name');
+    if (oppNameEl) oppNameEl.textContent = 'VS ' + opponentData.name.toUpperCase();
+    const pauseBtn = document.getElementById('btn-pause');
+    if (pauseBtn) { pauseBtn.textContent = '⏸'; pauseBtn.disabled = false; }
+    paused = false;
   }
 
   function mainAction() {
@@ -1600,6 +1646,76 @@ const Race = (() => {
     pNosActive = true;
     Audio.startNos();
     UI.toast('⚡ NOS ACTIVATED!', 'info');
+  }
+
+  // ── PAUSE / RESUME ──
+  function pause() {
+    if (paused || state === 'idle' || state === 'finished') return;
+    paused = true;
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    Audio.idle();
+
+    // Draw pause overlay on top of current frame
+    const c = rCtx;
+    const W = raceCanvas.width, H = raceCanvas.height;
+    c.fillStyle = 'rgba(5,5,13,0.72)';
+    c.fillRect(0, 0, W, H);
+    c.textAlign = 'center';
+    c.font = 'bold 26px Orbitron, monospace';
+    c.fillStyle = '#ffcc00';
+    c.fillText('PAUSED', W / 2, H / 2 - 10);
+    c.font = '11px Share Tech Mono, monospace';
+    c.fillStyle = '#778899';
+    c.fillText('TAP RESUME OR PRESS P', W / 2, H / 2 + 18);
+    c.textAlign = 'left';
+
+    const btn = document.getElementById('btn-pause');
+    if (btn) btn.textContent = '▶';
+  }
+
+  function resume() {
+    if (!paused) return;
+    paused = false;
+    const btn = document.getElementById('btn-pause');
+    if (btn) btn.textContent = '⏸';
+    lastFrame = performance.now();
+    animId = requestAnimationFrame(loop);
+    if (state === 'racing') Audio.setRpm(pRpm);
+  }
+
+  function togglePause() {
+    if (state === 'finished' || state === 'idle') return;
+    if (paused) resume(); else pause();
+  }
+
+  function goBack() {
+    // If race is done or not started yet, just go back
+    if (raceFinished || state === 'idle' || state === 'staging' || state === 'staged') {
+      stop();
+      UI.show('race-menu');
+      return;
+    }
+    // Mid-race: pause then ask
+    const wasPaused = paused;
+    if (!paused) pause();
+
+    UI.confirm('Abandon this race?', () => {
+      paused = false;
+      stop();
+      UI.show('race-menu');
+    });
+
+    // If user dismisses modal without confirming, resume the race
+    if (!wasPaused) {
+      const modal = document.getElementById('modal-overlay');
+      const observer = new MutationObserver(() => {
+        if (modal.classList.contains('hidden')) {
+          if (paused) resume();
+          observer.disconnect();
+        }
+      });
+      observer.observe(modal, { attributes: true, attributeFilter: ['class'] });
+    }
   }
 
   // ── PHYSICS UPDATE ──
@@ -1951,6 +2067,7 @@ const Race = (() => {
 
   // ── MAIN LOOP ──
   function loop(ts) {
+    if (paused) return; // safety guard
     animId = requestAnimationFrame(loop);
     const dt = Math.min(0.05, (ts - lastFrame) / 1000);
     lastFrame = ts;
@@ -2063,6 +2180,7 @@ const Race = (() => {
   return {
     init, setup, start, stop,
     mainAction, activateNos, restart,
+    togglePause, goBack,
     getCurrentOpponent, getState,
   };
 })();
@@ -2676,6 +2794,8 @@ const UI = (() => {
     if (currentScreen === 'race') {
       if (e.code === 'Space') { e.preventDefault(); Race.mainAction(); }
       if (e.code === 'KeyN')  Race.activateNos();
+      if (e.code === 'KeyP')  Race.togglePause();
+      if (e.code === 'Escape') Race.goBack();
     }
   });
 
